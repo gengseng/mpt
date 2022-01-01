@@ -7,13 +7,13 @@ import pandas as pd
 import requests_cache
 
 #cache work install
-#requests_cache.install_cache()
+requests_cache.install_cache()
 
 #Market id to call
 ### need to get input for ticker
 
 #Example: MARKET_ID = "bitcoin"
-MARKET_ID = input("Enter name of crypto for price info(must enter in full name, lower case): ")
+MARKET_ID = input("Enter name of crypto for price info(lower case): ")
 day_input = input("Get price data from how many days ago? ")
 
 #payload inputs are vs_currency(usd) and 
@@ -24,29 +24,48 @@ payload = {
 }
 
 def main():
-    r = getcoinprice(payload)
-    f_df = convert_to_df(r)
-    print(f_df)
-    print(f_df.loc[str(datetime.today().date() - timedelta(days=int(day_input)))]["Price"].item())
+    coinname = convert_coin_name()
+    coinprice = convert_price_to_df(getcoinprice(payload, coinname))
+    print(coinprice)
+    print(coinprice.loc[str(datetime.today().date() - timedelta(days=int(day_input)))]["Price"].item())
+
+def convert_coin_name():
+    #Coingecko API => get coin lists, convert to DataFrame(may not be needed), and get id name of symbol
+    payload = {
+        "include_platform": "false",
+        "format": "json"
+    }
+    url = "https://api.coingecko.com/api/v3/coins/list"
+    response = requests.get(url, params=payload)
+    if response.status_code != 200:
+        print(response.text)
+    else:
+        #print(response.json())
+        df = pd.DataFrame(response.json())
+        print(df[(df["id"] == MARKET_ID) | (df["symbol"] == MARKET_ID)].iloc[:,:2])
+        return df[(df["id"] == MARKET_ID) | (df["symbol"] == MARKET_ID)]["id"].item()
             
-def getcoinprice(payload):
+    if not getattr(response, 'from_cache', False):
+       time.sleep(0.25)
+    
+def getcoinprice(payload, coinname):
     #Coingecko API => get coin price data for specific market id
-    url = "https://api.coingecko.com/api/v3/coins/" + MARKET_ID + "/market_chart"
+    url = "https://api.coingecko.com/api/v3/coins/" + coinname + "/market_chart"
     payload["format"] = "json"
     response = requests.get(url, params=payload)
     if response.status_code != 200:
         print(response.text)
-        print("Crypto name of " + MARKET_ID + " does not exist.")
+        print("Crypto name of " + coinname + " does not exist.")
     else:
         #print(response.json())
         return response
     
     #if it's not cached result, sleep 0.25 -> ~4 calls per second
-    #if not getattr(response, 'from_cache', False):
-    #   time.sleep(0.25)
+    if not getattr(response, 'from_cache', False):
+       time.sleep(0.25)
 
-def convert_to_df(response):
-    #convert json to DataFrame and show prices only
+def convert_price_to_df(response):
+    #convert price data json to DataFrame and show prices only
     df = pd.DataFrame(response.json()["prices"])
     #change column names
     df.columns = ["Date", "Price"]
