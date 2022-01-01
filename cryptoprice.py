@@ -16,26 +16,19 @@ requests_cache.install_cache()
 MARKET_ID = input("Enter name of crypto for price info(lower case): ")
 day_input = input("Get price data from how many days ago? ")
 
-#payload inputs are vs_currency(usd) and 
-#days(Minutely data for duration within 1 day, Hourly data for duration between 1 day and 90 days, Daily data for duration above 90 days)
-payload = {
-    "vs_currency": "usd",
-    "days": "max"
-}
-
 def main():
     coinname = convert_coin_name()
-    coinprice = convert_price_to_df(getcoinprice(payload, coinname))
+    coinprice = convert_price_to_df(getcoinprice(coinname))
     print(coinprice)
     print(coinprice.loc[str(datetime.today().date() - timedelta(days=int(day_input)))]["Price"].item())
 
 def convert_coin_name():
     #Coingecko API => get coin lists, convert to DataFrame(may not be needed), and get id name of symbol
+    url = "https://api.coingecko.com/api/v3/coins/list"
     payload = {
         "include_platform": "false",
         "format": "json"
     }
-    url = "https://api.coingecko.com/api/v3/coins/list"
     response = requests.get(url, params=payload)
     if response.status_code != 200:
         print(response.text)
@@ -48,10 +41,16 @@ def convert_coin_name():
     if not getattr(response, 'from_cache', False):
        time.sleep(0.25)
     
-def getcoinprice(payload, coinname):
+def getcoinprice(coinname):
     #Coingecko API => get coin price data for specific market id
     url = "https://api.coingecko.com/api/v3/coins/" + coinname + "/market_chart"
-    payload["format"] = "json"
+    #payload inputs are vs_currency(usd) and 
+    #days(Minutely data for duration within 1 day, Hourly data for duration between 1 day and 90 days, Daily data for duration above 90 days)
+    payload = {
+        "vs_currency": "usd",
+        "days": "max",
+        "format": "json"
+    }
     response = requests.get(url, params=payload)
     if response.status_code != 200:
         print(response.text)
